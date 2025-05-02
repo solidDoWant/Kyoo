@@ -37,6 +37,7 @@ class Publisher(RabbitBase):
 
     async def listen(self, scan):
         async def on_message(message: AbstractIncomingMessage):
+            logger.debug("Received message: %s", message.body)
             try:
                 await scan()
                 await message.ack()

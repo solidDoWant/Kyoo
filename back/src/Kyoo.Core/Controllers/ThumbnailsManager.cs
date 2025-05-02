@@ -140,8 +140,12 @@ public class ThumbnailsManager(
 	{
 		string path = _GetImagePath(imageId, quality);
 		if (await storage.DoesExist(path))
+		{
+			Console.WriteLine($"Image {path} exists");
 			return await storage.Read(path);
+		}
 
+		Console.WriteLine($"Image {path} does not exist");
 		throw new ItemNotFoundException();
 	}
 

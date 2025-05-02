@@ -77,7 +77,11 @@ public static class PostgresModule
 		dsBuilder.MapEnum<Status>();
 		dsBuilder.MapEnum<Genre>();
 		dsBuilder.MapEnum<WatchStatus>();
-		return dsBuilder.Build();
+		var ds = dsBuilder.Build();
+
+		Console.WriteLine("Postgres connection string: " + ds.ConnectionString);
+
+		return ds;
 	}
 
 	public static void ConfigurePostgres(this WebApplicationBuilder builder)
@@ -93,7 +97,7 @@ public static class PostgresModule
 			ServiceLifetime.Transient
 		);
 		builder.Services.AddTransient(
-			(services) => services.GetRequiredService<DatabaseContext>().Database.GetDbConnection()
+			(services) => new DBConnectionDebugger(services.GetRequiredService<DatabaseContext>().Database.GetDbConnection())
 		);
 
 		builder.Services.AddHealthChecks().AddDbContextCheck<DatabaseContext>();

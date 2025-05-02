@@ -33,10 +33,13 @@ public class S3Storage(IAmazonS3 s3Client, IConfiguration configuration) : IStor
 
 	public Task<bool> DoesExist(string path)
 	{
+		Console.WriteLine($"S3: {path}");
 		return s3Client
 			.GetObjectMetadataAsync(_GetBucketName(), path)
 			.ContinueWith(t =>
 			{
+				Console.WriteLine($"S3: {path} - {t.IsFaulted} - {t.Status} - {t.Result.HttpStatusCode}");
+
 				if (t.IsFaulted)
 					return false;
 

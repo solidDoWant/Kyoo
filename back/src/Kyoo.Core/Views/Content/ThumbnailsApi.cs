@@ -57,12 +57,22 @@ public class ThumbnailsApi(IThumbnailsManager thumbs) : BaseApi
 	[ProducesResponseType(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> GetPoster(Guid id, [FromQuery] ImageQuality? quality)
 	{
+		Console.WriteLine($"Image {id} requested");
 		quality ??= ImageQuality.High;
 		if (await thumbs.IsImageSaved(id, quality.Value))
+		{
+			Console.WriteLine($"Image {id} not saved");
+
 			return NotFound();
+		}
 
 		// Allow clients to cache the image for 6 month.
 		Response.Headers.CacheControl = $"public, max-age={60 * 60 * 24 * 31 * 6}";
+
+		var stream = await thumbs.GetImage(id, quality.Value);
+		if (stream == null)
+			Console.WriteLine($"Image {id} not found");
+
 		return File(await thumbs.GetImage(id, quality.Value), "image/webp", true);
 	}
 }

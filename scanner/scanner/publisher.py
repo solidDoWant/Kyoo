@@ -38,6 +38,21 @@ class Publisher(RabbitBase):
     async def listen(self, scan):
         async def on_message(message: AbstractIncomingMessage):
             logger.debug("Received message: %s", message.body)
+
+            data = json.loads(message.body)
+            action = data.get("action", "")
+            if action != "refresh":
+                logger.debug("Ignoring message: %s", message.body)
+                # Tell RabbitMQ to requeue the message, hopefully sending it to another consumer
+                # that can handle it.
+                # A better approach would be to use a separate queue for these messages, or
+                # routing keys. However, because rabbitmq will be removed in v5, this is probably
+                # not worth changing now.
+                # Warning: this can cause an infinite loop if the message if no consumers can handle
+                # it (usually only if the backend is unavailable).
+                await message.reject(requeue=True)
+                return
+
             try:
                 await scan()
                 await message.ack()

@@ -96,7 +96,7 @@ public static class PostgresModule
 			},
 			ServiceLifetime.Transient
 		);
-		builder.Services.AddTransient(
+		builder.Services.AddTransient<DbConnection>(
 			(services) => new DBConnectionDebugger(services.GetRequiredService<DatabaseContext>().Database.GetDbConnection())
 		);
 

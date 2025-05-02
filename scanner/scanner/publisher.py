@@ -14,10 +14,12 @@ class Publisher(RabbitBase):
     QUEUE_RESCAN = "scanner.rescan"
 
     async def _publish(self, data: dict):
+        logger.debug("Publishing %s", data)
         await self._channel.default_exchange.publish(
             Message(json.dumps(data).encode()),
             routing_key=self.QUEUE,
         )
+        logger.debug("Published %s", data)
 
     async def add(self, path: str):
         await self._publish({"action": "scan", "path": path})

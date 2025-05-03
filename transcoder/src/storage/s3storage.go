@@ -187,7 +187,9 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 
 	// Use a separate context for the writer to allow cancellation if the upload fails. This is important to avoid
 	// a hung goroutine leak if the upload fails.
-	writeCtx, cancel := context.WithCancel(ctx)
+	_, cancel := context.WithCancel(ctx)
+
+	contents := []byte("Test contents")
 
 	log.Printf("Starting writer goroutine for path %q", path)
 	var writerGroup errgroup.Group
@@ -196,7 +198,10 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 		defer log.Printf("Finished write contents for path %q", path)
 		defer utils.CleanupWithErr(&err, pw.Close, "failed to close pipe writer")
 
-		return writeContents(writeCtx, pw)
+		_, err = pw.Write(contents)
+		return err
+
+		// return writeContents(writeCtx, pw)
 	})
 
 	// Handle cleanup and avoid a goroutines leak.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -176,24 +177,31 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 	writeCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	log.Printf("Starting writer goroutine for path %q", path)
 	var writerGroup errgroup.Group
 	writerGroup.Go(func() (err error) {
+		log.Printf("Calling write contents for path %q", path)
+		defer log.Printf("Finished write contents for path %q", path)
 		defer utils.CleanupWithErr(&err, pw.Close, "failed to close pipe writer")
 		return writeContents(writeCtx, pw)
 	})
 
 	// Wait for the write to complete and check for errors.
 	// This should always happen even if saving fails, to prevent a goroutine leak.
+	defer log.Printf("Finished waiting for writer goroutine for path %q", path)
 	defer utils.CleanupWithErr(&err, writerGroup.Wait, "writer callback failed")
 
+	log.Printf("Calling save item with path %q", path)
 	// Upload the object to S3 using the pipe as the body.
 	if err := ssb.SaveItem(ctx, path, pr); err != nil {
 		// Ensure that the writer context is cancelled prior to awaiting for the writer to finish.
 		// This is important to avoid a hung goroutine leak if the upload fails.
+		log.Printf("Failed to save item with path %q: %v", path, err)
 		cancel()
 		return err
 	}
 
+	log.Printf("Finished save item with path %q", path)
 	return nil
 }
 

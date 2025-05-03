@@ -173,7 +173,7 @@ func (s *MetadataService) extractThumbnail(ctx context.Context, path string, sha
 	}
 
 	//  Thumbnail sprite
-	log.Printf("Saving thumbnail sprite for %s", sha)
+	log.Printf("Getting format of thumbnail sprite for %s", sha)
 	spriteFormat, err := imaging.FormatFromFilename(spritePath)
 	if err != nil {
 		return err
@@ -181,15 +181,18 @@ func (s *MetadataService) extractThumbnail(ctx context.Context, path string, sha
 
 	log.Printf("Saving thumbnail sprite for %s", sha)
 	err = s.storage.SaveItemWithCallback(ctx, spritePath, func(_ context.Context, writer io.Writer) error {
+		log.Printf("Encoding thumbnail sprite for %s", sha)
 		if err := imaging.Encode(writer, sprite, spriteFormat); err != nil {
 			return fmt.Errorf("failed to encode thumbnail sprite: %w", err)
 		}
+		log.Printf("Finished encoding thumbnail sprite for %s", sha)
 		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to save thumbnail sprite with path %q: %w", spritePath, err)
 	}
 
+	log.Printf("Thumbnails saved for %s", sha)
 	return nil
 }
 

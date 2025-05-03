@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-migrate/migrate/v4"
@@ -127,7 +128,7 @@ func (s *MetadataService) setupStorage(ctx context.Context) (storage.StorageBack
 	if s3BucketName != "" {
 		// Use S3 storage
 		// Create the client (use all standard AWS config sources like env vars, config files, etc.)
-		awsConfig, err := config.LoadDefaultConfig(ctx)
+		awsConfig, err := config.LoadDefaultConfig(ctx, config.WithClientLogMode(aws.LogRequestWithBody|aws.LogResponseWithBody))
 		if err != nil {
 			return nil, fmt.Errorf("failed to load AWS config: %w", err)
 		}

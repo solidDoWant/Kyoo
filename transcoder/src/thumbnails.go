@@ -89,6 +89,8 @@ func (s *MetadataService) ExtractThumbs(ctx context.Context, path string, sha st
 func (s *MetadataService) extractThumbnail(ctx context.Context, path string, sha string) (err error) {
 	defer utils.PrintExecTime("extracting thumbnails for %s", path)()
 
+	log.Printf("Using storage backend type %T", s.storage)
+
 	vttPath := getThumbVttPath(sha)
 	spritePath := getThumbPath(sha)
 	newItemPaths := []string{spritePath, vttPath}
@@ -158,22 +160,26 @@ func (s *MetadataService) extractThumbnail(ctx context.Context, path string, sha
 	}
 
 	// Cleanup old thumbnails
+	log.Printf("Cleaning up old thumbnails for %s", sha)
 	if err := s.storage.DeleteItemsWithPrefix(ctx, getThumbPrefix(sha)); err != nil {
 		return fmt.Errorf("failed to delete old thumbnails: %w", err)
 	}
 
 	// Store the new items
 	//  Thumbnail vtt
+	log.Printf("Saving thumbnail vtt for %s", sha)
 	if err = s.storage.SaveItem(ctx, vttPath, strings.NewReader(vtt)); err != nil {
 		return fmt.Errorf("failed to save thumbnail vtt with path %q: %w", vttPath, err)
 	}
 
 	//  Thumbnail sprite
+	log.Printf("Saving thumbnail sprite for %s", sha)
 	spriteFormat, err := imaging.FormatFromFilename(spritePath)
 	if err != nil {
 		return err
 	}
 
+	log.Printf("Saving thumbnail sprite for %s", sha)
 	err = s.storage.SaveItemWithCallback(ctx, spritePath, func(_ context.Context, writer io.Writer) error {
 		if err := imaging.Encode(writer, sprite, spriteFormat); err != nil {
 			return fmt.Errorf("failed to encode thumbnail sprite: %w", err)

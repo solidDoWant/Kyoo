@@ -167,7 +167,6 @@ func (ssb *S3StorageBackend) DeleteItemsWithPrefix(ctx context.Context, pathPref
 func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path string, writeContents ContentsWriterCallback) (err error) {
 	// Create a pipe to connect the writer and reader.
 	pr, pw := io.Pipe()
-	defer utils.CleanupWithErr(&err, pr.Close, "failed to close pipe reader")
 
 	// Start a goroutine to write to the pipe.
 	// Writing and reading must occur concurrently to avoid deadlocks.
@@ -175,7 +174,6 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 	// Use a separate context for the writer to allow cancellation if the upload fails. This is important to avoid
 	// a hung goroutine leak if the upload fails.
 	writeCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 
 	log.Printf("Starting writer goroutine for path %q", path)
 	var writerGroup errgroup.Group
@@ -183,13 +181,20 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 		log.Printf("Calling write contents for path %q", path)
 		defer log.Printf("Finished write contents for path %q", path)
 		defer utils.CleanupWithErr(&err, pw.Close, "failed to close pipe writer")
+
 		return writeContents(writeCtx, pw)
 	})
 
-	// Wait for the write to complete and check for errors.
-	// This should always happen even if saving fails, to prevent a goroutine leak.
-	defer log.Printf("Finished waiting for writer goroutine for path %q", path)
+	// Handle cleanup and avoid a goroutines leak.
+	// Order is critical here. If the context is not cancelled, or the pipe is not closed
+	// before waiting for the writer to finish, there can be a deadlock. This happens when
+	// a writer without context support is waiting for written bytes to be read.
+	// Remember: the last deferred function is executed first.
+	defer log.Printf("Finished waiting for writer goroutine for path %q", path) // TODO
 	defer utils.CleanupWithErr(&err, writerGroup.Wait, "writer callback failed")
+	defer log.Printf("Starting waiting for writer goroutine for path %q", path) // TODO
+	defer utils.CleanupWithErr(&err, pr.Close, "failed to close pipe reader")
+	defer cancel()
 
 	log.Printf("Calling save item with path %q", path)
 	// Upload the object to S3 using the pipe as the body.
@@ -197,8 +202,7 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 		// Ensure that the writer context is cancelled prior to awaiting for the writer to finish.
 		// This is important to avoid a hung goroutine leak if the upload fails.
 		log.Printf("Failed to save item with path %q: %v", path, err)
-		cancel()
-		return err
+		return fmt.Errorf("failed to save item with path %q: %w", path, err)
 	}
 
 	log.Printf("Finished save item with path %q", path)

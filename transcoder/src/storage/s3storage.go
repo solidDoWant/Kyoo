@@ -163,13 +163,13 @@ func (ssb *S3StorageBackend) DeleteItemsWithPrefix(ctx context.Context, pathPref
 }
 
 type pipeReaderWrapper struct {
-	io.Reader
+	R io.Reader
 }
 
 func (prw *pipeReaderWrapper) Read(p []byte) (n int, err error) {
 	log.Printf("read called with %d bytes\n", len(p))
 
-	n, err = prw.Reader.Read(p)
+	n, err = prw.R.Read(p)
 
 	log.Printf("read returned %d bytes, err: %v\n", n, err)
 
@@ -225,7 +225,8 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 
 	log.Printf("Calling save item with path %q", path)
 	// Upload the object to S3 using the pipe as the body.
-	if err := ssb.SaveItem(ctx, path, &pipeReaderWrapper{pr}); err != nil {
+	r := &pipeReaderWrapper{R: pr}
+	if err := ssb.SaveItem(ctx, path, r); err != nil {
 		// Ensure that the writer context is cancelled prior to awaiting for the writer to finish.
 		// This is important to avoid a hung goroutine leak if the upload fails.
 		log.Printf("Failed to save item with path %q: %v", path, err)

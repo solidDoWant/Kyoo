@@ -1,12 +1,14 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -196,9 +198,22 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 	defer utils.CleanupWithErr(&err, pr.Close, "failed to close pipe reader")
 	defer cancel()
 
+	log.Printf("DEBUG: reading all from pipe for path %q", path)
+	readBuf, err := io.ReadAll(pr)
+	if err != nil {
+		log.Printf("Failed to read from pipe: %v", err)
+		return fmt.Errorf("failed to read from pipe: %w", err)
+	}
+	log.Printf("DEBUG: read %d bytes from pipe for path %q", len(readBuf), path)
+
+	if err := os.WriteFile("/tmp/debug", readBuf, 0644); err != nil {
+		log.Printf("Failed to write debug file: %v", err)
+		return fmt.Errorf("failed to write debug file: %w", err)
+	}
+
 	log.Printf("Calling save item with path %q", path)
 	// Upload the object to S3 using the pipe as the body.
-	if err := ssb.SaveItem(ctx, path, pr); err != nil {
+	if err := ssb.SaveItem(ctx, path, bytes.NewReader(readBuf)); err != nil {
 		// Ensure that the writer context is cancelled prior to awaiting for the writer to finish.
 		// This is important to avoid a hung goroutine leak if the upload fails.
 		log.Printf("Failed to save item with path %q: %v", path, err)

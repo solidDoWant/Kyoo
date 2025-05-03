@@ -1,14 +1,12 @@
 package storage
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -164,6 +162,20 @@ func (ssb *S3StorageBackend) DeleteItemsWithPrefix(ctx context.Context, pathPref
 	return nil
 }
 
+type pipeReaderWrapper struct {
+	io.Reader
+}
+
+func (prw *pipeReaderWrapper) Read(p []byte) (n int, err error) {
+	log.Printf("read called with %d bytes\n", len(p))
+
+	n, err = prw.Reader.Read(p)
+
+	log.Printf("read returned %d bytes, err: %v\n", n, err)
+
+	return n, err
+}
+
 // SaveItemWithCallback saves an item to the storage backend. If the item already exists, it overwrites it.
 // The writeContents function is called with a writer to write the contents of the item.
 func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path string, writeContents ContentsWriterCallback) (err error) {
@@ -198,22 +210,22 @@ func (ssb *S3StorageBackend) SaveItemWithCallback(ctx context.Context, path stri
 	defer utils.CleanupWithErr(&err, pr.Close, "failed to close pipe reader")
 	defer cancel()
 
-	log.Printf("DEBUG: reading all from pipe for path %q", path)
-	readBuf, err := io.ReadAll(pr)
-	if err != nil {
-		log.Printf("Failed to read from pipe: %v", err)
-		return fmt.Errorf("failed to read from pipe: %w", err)
-	}
-	log.Printf("DEBUG: read %d bytes from pipe for path %q", len(readBuf), path)
+	// log.Printf("DEBUG: reading all from pipe for path %q", path)
+	// readBuf, err := io.ReadAll(pr)
+	// if err != nil {
+	// 	log.Printf("Failed to read from pipe: %v", err)
+	// 	return fmt.Errorf("failed to read from pipe: %w", err)
+	// }
+	// log.Printf("DEBUG: read %d bytes from pipe for path %q", len(readBuf), path)
 
-	if err := os.WriteFile("/tmp/debug", readBuf, 0644); err != nil {
-		log.Printf("Failed to write debug file: %v", err)
-		return fmt.Errorf("failed to write debug file: %w", err)
-	}
+	// if err := os.WriteFile("/tmp/debug", readBuf, 0644); err != nil {
+	// 	log.Printf("Failed to write debug file: %v", err)
+	// 	return fmt.Errorf("failed to write debug file: %w", err)
+	// }
 
 	log.Printf("Calling save item with path %q", path)
 	// Upload the object to S3 using the pipe as the body.
-	if err := ssb.SaveItem(ctx, path, bytes.NewReader(readBuf)); err != nil {
+	if err := ssb.SaveItem(ctx, path, &pipeReaderWrapper{pr}); err != nil {
 		// Ensure that the writer context is cancelled prior to awaiting for the writer to finish.
 		// This is important to avoid a hung goroutine leak if the upload fails.
 		log.Printf("Failed to save item with path %q: %v", path, err)

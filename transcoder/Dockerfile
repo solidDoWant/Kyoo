@@ -47,7 +47,7 @@ RUN set -x && apt-get update \
 	# hwaccel dependencies
 	vainfo mesa-va-drivers \
 	# intel hwaccel dependencies, not available everywhere
-	$([ " $TARGETARCH" = " amd64" ] && echo "intel-media-va-driver-non-free i965-va-driver-shaders") \
+	$([ " $TARGETARCH" = " amd64" ] && echo "intel-media-va-driver-non-free i965-va-driver-shaders libmfx-gen1.2") \
 	# CA certificates for HTTPS to S3 buckets
 	ca-certificates \
 	&& apt-get clean autoclean -y \

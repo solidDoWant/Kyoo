@@ -39,15 +39,28 @@ FROM debian:trixie-slim
 ARG TARGETARCH
 ENV TARGETARCH=${TARGETARCH:-amd64}
 RUN echo $TARGETARCH
-RUN sed -i -e's/ main/ main contrib non-free/g' /etc/apt/sources.list.d/debian.sources
-RUN set -x && apt-get update \
+RUN sed -i -e's/ main/ main contrib non-free/g' /etc/apt/sources.list.d/debian.sources \
+	&& set -x \
+	# Install curl to assist with setup of the intel apt repo
+	&& apt-get update \
+	# && apt-get install --no-install-recommends --no-install-suggests -y curl ca-certificates \
+	# Setup the intel apt repo if on amd64
+	# Intel repos do not currently support Debian, only Ubuntu
+	# && if [ "$TARGETARCH" = "amd64" ]; then \
+	# 	curl -fsSL https://repositories.intel.com/graphics/intel-graphics.key > /usr/share/keyrings/intel-graphics.gpg \
+	# 	&& . /etc/os-release \
+	# 	&& echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/${ID}/ ${VERSION_CODENAME} unified" > /etc/apt/sources.list.d/intel-graphics.list; \
+	# 	echo "deb https://repositories.intel.com/graphics/debian/ $(lsb_release -cs) main" > /etc/apt/sources.list.d/intel-graphics.list; \
+	# fi \
 	&& apt-get install --no-install-recommends --no-install-suggests -y \
 	# runtime dependencies
 	ffmpeg \
 	# hwaccel dependencies
 	vainfo mesa-va-drivers \
 	# intel hwaccel dependencies, not available everywhere
-	$([ " $TARGETARCH" = " amd64" ] && echo "intel-media-va-driver-non-free i965-va-driver-shaders libmfx-gen1.2") \
+	# Roughly follow https://github.com/blakeblackshear/frigate/blob/dev/docker/main/install_deps.sh#L59-L79 with the
+	# libvpl packages required by ffmpeg here: https://trac.ffmpeg.org/wiki/Hardware/QuickSync
+	$([ " $TARGETARCH" = " amd64" ] && echo "intel-media-va-driver-non-free i965-va-driver-shaders libmfx-gen1.2 libvpl2 libigfxcmrt7") \
 	# CA certificates for HTTPS to S3 buckets
 	ca-certificates \
 	&& apt-get clean autoclean -y \

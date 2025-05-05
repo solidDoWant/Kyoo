@@ -76,20 +76,24 @@ func (s *MetadataService) GetThumbSprite(ctx context.Context, path string, sha s
 // The function will wait for job completion. If the context is cancelled, the job will continue
 // running in the background, but the function will return a context cancellation error.
 func (s *MetadataService) ThumbnailExtractionJob(ctx context.Context, path string, sha string) error {
+	log.Printf("Starting ThumbnailExtractionJob for %s", path)
 	get_running, set := s.thumbLock.Start(sha)
 	if get_running != nil {
+		log.Printf("ThumbnailExtractionJob for %s is already running", path)
 		_, err := get_running()
+		log.Printf("ThumbnailExtractionJob for %s finished with error: %v", path, err)
 		return err
 	}
 
 	job := func(ctx context.Context) error {
 		err := s.extractThumbnail(ctx, path, sha)
 		log.Printf("Thumbnail extraction job for %s finished with error: %v", path, err)
-		if err == nil {
-			return nil
+		if err != nil {
+			_, err = set(nil, fmt.Errorf("failed to extract thumbnail for %s: %w", path, err))
+			return err
 		}
 
-		_, err = set(nil, fmt.Errorf("failed to extract thumbnail for %s: %w", path, err))
+		_, err = set(nil, nil)
 		return err
 	}
 

@@ -52,8 +52,10 @@ func (r *RunLock[K, V]) Start(key K) (func() (V, error), func(val V, err error) 
 
 	log.Printf("Returning new task %v", key)
 	return nil, func(val V, err error) (V, error) {
+		log.Printf("Attempting to take lock for task %v", key)
 		r.lock.Lock()
 		defer r.lock.Unlock()
+		log.Printf("Lock taken for task %v", key)
 
 		task, ok = r.running[key]
 		if !ok {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -62,7 +63,8 @@ func CleanupWithErr(err *error, fn func() error, msg string, args ...any) {
 func RunJob(waitContext context.Context, job func(context.Context) error, maxJobDuration time.Duration) error {
 	// Job completion signal, time limit + cancellation, error capturing
 	jobDone := make(chan struct{})
-	defer close(jobDone)
+	jobClose := sync.OnceFunc(func() { close(jobDone) })
+	defer jobClose()
 
 	// TODO this should be cancelled via a root cancellation context (listen for OS signals, etc.)
 	jobCtx, cancel := context.WithTimeout(context.TODO(), maxJobDuration)
@@ -80,7 +82,7 @@ func RunJob(waitContext context.Context, job func(context.Context) error, maxJob
 		}
 
 		// Signal that the job is done
-		close(jobDone)
+		jobClose()
 		cancel()
 	}()
 

@@ -30,11 +30,12 @@ func (s *MetadataService) SubtitleExtractionJob(ctx context.Context, info *Media
 
 	job := func(ctx context.Context) error {
 		err := s.extractSubs(ctx, info)
-		if err == nil {
-			return nil
+		if err != nil {
+			_, err = set(nil, fmt.Errorf("failed to extract subtitles for %s: %w", info.Path, err))
+			return err
 		}
 
-		_, err = set(nil, fmt.Errorf("failed to extract subtitles for %s: %w", info.Path, err))
+		_, err = set(nil, nil)
 		return err
 	}
 

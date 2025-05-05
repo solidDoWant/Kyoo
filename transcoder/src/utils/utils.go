@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -51,4 +53,56 @@ func CleanupWithErr(err *error, fn func() error, msg string, args ...any) {
 		*err = fmt.Errorf("%s: %w", fmt.Sprintf(msg, args...), cleanupErr)
 	}
 	*err = errors.Join(*err, cleanupErr)
+}
+
+// RunJob runs a job in the background and waits for it to complete.
+// If the job takes longer than maxJobDuration, it will be cancelled via a separate cancellation context.
+// If the waitContext is cancelled, the job will continue running in the background until it completes,
+// or the maxJobDuration is reached.
+// An error is only returned if the provided context is cancelled while waiting for the job to complete.
+func RunJob(waitContext context.Context, job func(context.Context) error, maxJobDuration time.Duration) error {
+	log.Printf("Starting job with max duration %s", maxJobDuration)
+
+	// Job completion signal, time limit + cancellation, error capturing
+	jobDone := make(chan struct{})
+	jobClose := sync.OnceFunc(func() {
+		log.Printf("Closing jobDone channel")
+		close(jobDone)
+	})
+	defer jobClose()
+
+	// TODO this should be cancelled via a root cancellation context (listen for OS signals, etc.)
+	jobCtx, cancel := context.WithTimeout(context.TODO(), maxJobDuration)
+
+	var jobErr error
+
+	// Start the job
+	go func() {
+		jobErr = job(jobCtx)
+		log.Printf("Job completed with error: %v", jobErr)
+
+		// Log the error if the job fails and the caller has already cancelled the context
+		// This ensures that errors are not completely lost if the outer function has already returned
+		if jobErr != nil && waitContext.Err() != nil {
+			log.Printf("Background job failed: %v", jobErr)
+		}
+
+		// Signal that the job is done
+		jobClose()
+		cancel()
+	}()
+
+	// Wait for the job to complete, or the provided context to be cancelled.
+	// If the context is cancelled, the job will continue running in the background.
+	select {
+	case <-jobDone:
+		log.Printf("Job completed without timeout")
+	case <-waitContext.Done():
+		log.Printf("Context was cancelled while waiting for the job to complete: %v", waitContext.Err())
+		return fmt.Errorf("context was cancelled while waiting for the job to complete: %w", waitContext.Err())
+	}
+
+	log.Printf("RunJob completed with error: %v", jobErr)
+
+	return jobErr
 }

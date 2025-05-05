@@ -88,17 +88,14 @@ func (s *MetadataService) extractSubs(ctx context.Context, info *MediaInfo) (err
 	// TODO if the transcoder ever uses the ffmpeg library directly, remove this
 	// and write directly to storage via stream instead
 	tempWorkingDirectory := filepath.Join(os.TempDir(), info.Sha)
-	if err := os.MkdirAll(tempWorkingDirectory, 0660); err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
-	}
 
 	attachmentWorkingDirectory := filepath.Join(tempWorkingDirectory, "att")
-	if err := os.MkdirAll(attachmentWorkingDirectory, 0660); err != nil {
+	if err := os.MkdirAll(attachmentWorkingDirectory, 0770); err != nil {
 		return fmt.Errorf("failed to create attachment directory: %w", err)
 	}
 
 	subtitlesWorkingDirectory := filepath.Join(tempWorkingDirectory, "sub")
-	if err := os.MkdirAll(subtitlesWorkingDirectory, 0660); err != nil {
+	if err := os.MkdirAll(subtitlesWorkingDirectory, 0770); err != nil {
 		return fmt.Errorf("failed to create subtitles directory: %w", err)
 	}
 

@@ -94,7 +94,7 @@ func RunJob(waitContext context.Context, job func(context.Context) error, maxJob
 	// If the context is cancelled, the job will continue running in the background.
 	select {
 	case <-jobDone:
-		log.Printf("Job completed successfully")
+		log.Printf("Job completed without timeout")
 	case <-waitContext.Done():
 		log.Printf("Context was cancelled while waiting for the job to complete: %v", waitContext.Err())
 		return fmt.Errorf("context was cancelled while waiting for the job to complete: %w", waitContext.Err())

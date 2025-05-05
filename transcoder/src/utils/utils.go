@@ -61,6 +61,8 @@ func CleanupWithErr(err *error, fn func() error, msg string, args ...any) {
 // or the maxJobDuration is reached.
 // An error is only returned if the provided context is cancelled while waiting for the job to complete.
 func RunJob(waitContext context.Context, job func(context.Context) error, maxJobDuration time.Duration) error {
+	log.Printf("Starting job with max duration %s", maxJobDuration)
+
 	// Job completion signal, time limit + cancellation, error capturing
 	jobDone := make(chan struct{})
 	jobClose := sync.OnceFunc(func() {

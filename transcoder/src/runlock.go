@@ -2,6 +2,7 @@ package src
 
 import (
 	"errors"
+	"log"
 	"sync"
 )
 
@@ -32,12 +33,15 @@ func (r *RunLock[K, V]) Start(key K) (func() (V, error), func(val V, err error) 
 	task, ok := r.running[key]
 
 	if ok {
+		log.Printf("Task %v is already running", key)
 		// Important: Buffer this so that listener notifications are not blocked
 		// when the job completes.
 		ret := make(chan Result[V], 1)
 		task.listeners = append(task.listeners, ret)
 		return func() (V, error) {
+			log.Printf("Waiting for task %v to finish", key)
 			res := <-ret
+			log.Printf("Task %v finished with result: %v, %v", key, res.ok, res.err)
 			return res.ok, res.err
 		}, nil
 	}
@@ -46,6 +50,7 @@ func (r *RunLock[K, V]) Start(key K) (func() (V, error), func(val V, err error) 
 		listeners: make([]chan Result[V], 0),
 	}
 
+	log.Printf("Returning new task %v", key)
 	return nil, func(val V, err error) (V, error) {
 		r.lock.Lock()
 		defer r.lock.Unlock()
@@ -55,10 +60,13 @@ func (r *RunLock[K, V]) Start(key K) (func() (V, error), func(val V, err error) 
 			return val, errors.New("invalid run lock state. aborting.")
 		}
 
+		log.Printf("Notifying %d listeners for task %v", len(task.listeners), key)
 		for _, listener := range task.listeners {
 			listener <- Result[V]{ok: val, err: err}
 			close(listener)
 		}
+		log.Printf("Finished notifying listeners for task %v", key)
+
 		delete(r.running, key)
 		return val, err
 	}

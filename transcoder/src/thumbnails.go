@@ -84,6 +84,7 @@ func (s *MetadataService) ThumbnailExtractionJob(ctx context.Context, path strin
 
 	job := func(ctx context.Context) error {
 		err := s.extractThumbnail(ctx, path, sha)
+		log.Printf("Thumbnail extraction job for %s finished with error: %v", path, err)
 		if err == nil {
 			return nil
 		}

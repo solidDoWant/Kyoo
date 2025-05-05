@@ -63,7 +63,10 @@ func CleanupWithErr(err *error, fn func() error, msg string, args ...any) {
 func RunJob(waitContext context.Context, job func(context.Context) error, maxJobDuration time.Duration) error {
 	// Job completion signal, time limit + cancellation, error capturing
 	jobDone := make(chan struct{})
-	jobClose := sync.OnceFunc(func() { close(jobDone) })
+	jobClose := sync.OnceFunc(func() {
+		log.Printf("Closing jobDone channel")
+		close(jobDone)
+	})
 	defer jobClose()
 
 	// TODO this should be cancelled via a root cancellation context (listen for OS signals, etc.)
@@ -74,6 +77,7 @@ func RunJob(waitContext context.Context, job func(context.Context) error, maxJob
 	// Start the job
 	go func() {
 		jobErr = job(jobCtx)
+		log.Printf("Job completed with error: %v", jobErr)
 
 		// Log the error if the job fails and the caller has already cancelled the context
 		// This ensures that errors are not completely lost if the outer function has already returned
@@ -90,9 +94,13 @@ func RunJob(waitContext context.Context, job func(context.Context) error, maxJob
 	// If the context is cancelled, the job will continue running in the background.
 	select {
 	case <-jobDone:
+		log.Printf("Job completed successfully")
 	case <-waitContext.Done():
+		log.Printf("Context was cancelled while waiting for the job to complete: %v", waitContext.Err())
 		return fmt.Errorf("context was cancelled while waiting for the job to complete: %w", waitContext.Err())
 	}
+
+	log.Printf("RunJob completed with error: %v", jobErr)
 
 	return jobErr
 }

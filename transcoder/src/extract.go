@@ -117,6 +117,7 @@ func (s *MetadataService) extractSubs(ctx context.Context, info *MediaInfo) (err
 	)
 	cmd.Dir = attachmentWorkingDirectory
 
+	embeddedSubtitleCount := 0
 	for _, sub := range info.Subtitles {
 		if ext := sub.Extension; ext != nil {
 			if sub.IsExternal {
@@ -129,36 +130,40 @@ func (s *MetadataService) extractSubs(ctx context.Context, info *MediaInfo) (err
 				"-c:s", "copy",
 				fmt.Sprintf("%s/%d.%s", subtitlesWorkingDirectory, *sub.Index, *ext),
 			)
+			embeddedSubtitleCount++
 		}
 	}
-	log.Printf("Starting extraction with the command: %s", cmd)
-	cmd.Stdout = nil
 
-	if err := cmd.Run(); err != nil {
-		fmt.Println("Error starting ffmpeg extract:", err)
-		return err
-	}
+	if embeddedSubtitleCount != 0 {
+		log.Printf("Starting extraction with the command: %s", cmd)
+		cmd.Stdout = nil
 
-	// Move attachments and subtitles to the storage backend
-	var saveGroup errgroup.Group
-	saveGroup.Go(func() error {
-		err := storage.SaveFilesToBackend(ctx, s.storage, attachmentWorkingDirectory, filepath.Join(info.Sha, "att"))
-		if err != nil {
-			return fmt.Errorf("failed to save attachments to backend: %w", err)
+		if err := cmd.Run(); err != nil {
+			fmt.Println("Error starting ffmpeg extract:", err)
+			return err
 		}
-		return nil
-	})
 
-	saveGroup.Go(func() error {
-		err := storage.SaveFilesToBackend(ctx, s.storage, subtitlesWorkingDirectory, filepath.Join(info.Sha, "sub"))
-		if err != nil {
-			return fmt.Errorf("failed to save subtitles to backend: %w", err)
+		// Move attachments and subtitles to the storage backend
+		var saveGroup errgroup.Group
+		saveGroup.Go(func() error {
+			err := storage.SaveFilesToBackend(ctx, s.storage, attachmentWorkingDirectory, filepath.Join(info.Sha, "att"))
+			if err != nil {
+				return fmt.Errorf("failed to save attachments to backend: %w", err)
+			}
+			return nil
+		})
+
+		saveGroup.Go(func() error {
+			err := storage.SaveFilesToBackend(ctx, s.storage, subtitlesWorkingDirectory, filepath.Join(info.Sha, "sub"))
+			if err != nil {
+				return fmt.Errorf("failed to save subtitles to backend: %w", err)
+			}
+			return nil
+		})
+
+		if err := saveGroup.Wait(); err != nil {
+			return fmt.Errorf("failed while saving files to backend: %w", err)
 		}
-		return nil
-	})
-
-	if err := saveGroup.Wait(); err != nil {
-		return fmt.Errorf("failed while saving files to backend: %w", err)
 	}
 
 	_, err = s.database.Exec(`update info set ver_extract = $2 where sha = $1`, info.Sha, ExtractVersion)

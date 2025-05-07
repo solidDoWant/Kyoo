@@ -169,16 +169,20 @@ func getVideoKeyframes(path string, video_idx uint32, kf *Keyframe) error {
 	// We ask ffprobe to return the time of each frame and it's flags
 	// We could ask it to return only i-frames (keyframes) with the -skip_frame nokey but using it is extremly slow
 	// since ffmpeg parses every frames when this flag is set.
-	cmd := exec.Command(
-		"ffprobe",
-		"-loglevel", "error",
-		"-select_streams", fmt.Sprintf("V:%d", video_idx),
-		"-show_entries", "packet=pts_time,flags",
-		// some avi files don't have pts, we use this to ask ffmpeg to generate them (it uses the dts under the hood)
-		"-fflags", "+genpts",
-		"-of", "csv=print_section=0",
-		path,
-	)
+
+	args := []string{}
+	args = append(args, "-loglevel", "error")
+	args = append(args, Settings.HwAccel.GeneralFlags...)
+	args = append(args, "-select_streams", fmt.Sprintf("V:%d", video_idx))
+	args = append(args, "-show_entries", "packet=pts_time,flags")
+	// some avi files don't have pts, we use this to ask ffmpeg to generate them (it uses the dts under the hood)
+	args = append(args, "-fflags", "+genpts")
+	args = append(args, "-of", "csv=print_section=0")
+	args = append(args, path)
+
+	log.Printf("FFPROBE CALL: \"ffprobe\" \"%s\"", strings.Join(args, "\" \""))
+
+	cmd := exec.Command("ffprobe", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -284,18 +288,22 @@ func getAudioKeyframes(info *MediaInfo, audio_idx uint32, kf *Keyframe) error {
 	//
 	// We could use the same command to retrieve all packets and know when we can cut PRECISELY
 	// but since packets always contain only a few ms we don't need this precision.
-	cmd := exec.Command(
-		"ffprobe",
-		"-select_streams", fmt.Sprintf("a:%d", audio_idx),
-		"-show_entries", "packet=pts_time",
-		// some avi files don't have pts, we use this to ask ffmpeg to generate them (it uses the dts under the hood)
-		"-fflags", "+genpts",
-		// We use a read_interval LARGER than the file (at least we estimate)
-		// This allows us to only decode the LAST packets
-		"-read_intervals", fmt.Sprintf("%f", info.Duration+10_000),
-		"-of", "csv=print_section=0",
-		info.Path,
-	)
+	args := []string{}
+	args = append(args, "-loglevel", "error")
+	args = append(args, Settings.HwAccel.GeneralFlags...)
+	args = append(args, "-select_streams", fmt.Sprintf("a:%d", audio_idx))
+	args = append(args, "-show_entries", "packet=pts_time")
+	// some avi files don't have pts, we use this to ask ffmpeg to generate them (it uses the dts under the hood)
+	args = append(args, "-fflags", "+genpts")
+	// We use a read_interval LARGER than the file (at least we estimate)
+	// This allows us to only decode the LAST packets
+	args = append(args, "-read_intervals", fmt.Sprintf("%f", info.Duration+10_000))
+	args = append(args, "-of", "csv=print_section=0")
+	args = append(args, info.Path)
+
+	log.Printf("FFPROBE CALL: \"ffprobe\" \"%s\"", strings.Join(args, "\" \""))
+
+	cmd := exec.Command("ffprobe", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err

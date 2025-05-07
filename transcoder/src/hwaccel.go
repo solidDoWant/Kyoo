@@ -20,8 +20,7 @@ func DetectHardwareAccel() HwAccelT {
 	switch name {
 	case "disabled", "cpu":
 		return HwAccelT{
-			Name:        "disabled",
-			DecodeFlags: []string{},
+			Name: "disabled",
 			EncodeFlags: []string{
 				"-c:v", "libx264",
 				"-preset", preset,
@@ -39,7 +38,7 @@ func DetectHardwareAccel() HwAccelT {
 	case "vaapi":
 		return HwAccelT{
 			Name: name,
-			DecodeFlags: []string{
+			GeneralFlags: []string{
 				"-hwaccel", "vaapi",
 				"-hwaccel_device", GetEnvOr("GOCODER_VAAPI_RENDERER", "/dev/dri/renderD128"),
 				"-hwaccel_output_format", "vaapi",
@@ -74,7 +73,7 @@ func DetectHardwareAccel() HwAccelT {
 	case "qsv", "intel":
 		return HwAccelT{
 			Name: name,
-			DecodeFlags: []string{
+			GeneralFlags: []string{
 				"-hwaccel", "qsv",
 				"-qsv_device", GetEnvOr("GOCODER_QSV_RENDERER", "/dev/dri/renderD128"),
 				"-hwaccel_output_format", "qsv",
@@ -90,7 +89,7 @@ func DetectHardwareAccel() HwAccelT {
 	case "nvidia":
 		return HwAccelT{
 			Name: "nvidia",
-			DecodeFlags: []string{
+			GeneralFlags: []string{
 				"-hwaccel", "cuda",
 				// this flag prevents data to go from gpu space to cpu space
 				// it forces the whole dec/enc to be on the gpu. We want that.

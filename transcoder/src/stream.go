@@ -74,8 +74,11 @@ func NewStream(file *FileStream, keyframes *Keyframe, handle StreamHandle, ret *
 
 	ret.ready.Add(1)
 	go func() {
-		keyframes.info.ready.Wait()
-		defer utils.PrintExecTime("Stream ready for %s", file.Info.Path)()
+		func() {
+			defer utils.PrintExecTime("Waiting for keyframe info to be ready for %s", file.Info.Path)()
+			keyframes.info.ready.Wait()
+		}()
+		defer utils.PrintExecTime("Stream ready for %s", file.Info.Path)() // This is small - us range
 
 		length, is_done := keyframes.Length()
 		ret.segments = make([]Segment, length, max(length, 2000))
@@ -214,7 +217,7 @@ func (ts *Stream) run(start int32) error {
 	}
 
 	if ts.handle.getFlags()&VideoF != 0 {
-		args = append(args, Settings.HwAccel.DecodeFlags...)
+		args = append(args, Settings.HwAccel.GeneralFlags...)
 	}
 
 	if start_ref != 0 {

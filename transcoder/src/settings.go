@@ -21,8 +21,10 @@ type SettingsT struct {
 }
 
 type HwAccelT struct {
-	Name           string
-	DecodeFlags    []string
+	Name string
+	// GeneralFlags are flags that are always used to enable hardware acceleration.
+	GeneralFlags []string
+	// EncodeFlags are flags that are specific to viden encoding.
 	EncodeFlags    []string
 	NoResizeFilter string
 	ScaleFilter    string

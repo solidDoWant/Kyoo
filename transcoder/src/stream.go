@@ -81,11 +81,16 @@ func NewStream(file *FileStream, keyframes *Keyframe, handle StreamHandle, ret *
 			defer utils.PrintExecTime("Waiting for keyframe info to be ready for %s", file.Info.Path)()
 
 			if keyframes.info.parsedTimeNotifier != nil {
+				log.Printf("Using new keyframe notifier for %s", file.Info.Path)
+				// Use a keyframe-time based notifier if supported
 				keyframes.info.mutex.Lock()
 				for keyframes.info.parsedTime < minParsedKeyframeTime {
 					keyframes.info.parsedTimeNotifier.Wait()
 				}
 				keyframes.info.mutex.Unlock()
+			} else {
+				log.Printf("Using old keyframe notifier for %s", file.Info.Path)
+				keyframes.info.ready.Wait()
 			}
 		}()
 

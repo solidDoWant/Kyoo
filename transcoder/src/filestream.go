@@ -180,6 +180,7 @@ func (fs *FileStream) GetMaster() string {
 }
 
 func (fs *FileStream) getVideoStream(idx uint32, quality Quality) (*VideoStream, error) {
+	defer utils.PrintExecTime("video stream for %s (fs)", fs.Info.Path)()
 	stream, _ := fs.videos.GetOrCreate(VideoKey{idx, quality}, func() *VideoStream {
 		ret, _ := fs.transcoder.NewVideoStream(fs, idx, quality)
 		return ret
@@ -189,6 +190,7 @@ func (fs *FileStream) getVideoStream(idx uint32, quality Quality) (*VideoStream,
 }
 
 func (fs *FileStream) GetVideoIndex(idx uint32, quality Quality) (string, error) {
+	defer utils.PrintExecTime("video index for %s (fs)", fs.Info.Path)()
 	stream, err := fs.getVideoStream(idx, quality)
 	if err != nil {
 		return "", err

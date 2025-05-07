@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/zoriya/kyoo/transcoder/src/utils"
 )
 
 type Flags int32
@@ -362,6 +364,7 @@ func (ts *Stream) run(start int32) error {
 }
 
 func (ts *Stream) GetIndex() (string, error) {
+	defer utils.PrintExecTime("creating index for %s", ts.file.Info.Path)()
 	// playlist type is event since we can append to the list if Keyframe.IsDone is false.
 	// start time offset makes the stream start at 0s instead of ~3segments from the end (requires version 6 of hls)
 	index := `#EXTM3U

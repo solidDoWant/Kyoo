@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path"
+
+	"github.com/zoriya/kyoo/transcoder/src/utils"
 )
 
 type Transcoder struct {
@@ -38,6 +40,7 @@ func NewTranscoder(metadata *MetadataService) (*Transcoder, error) {
 }
 
 func (t *Transcoder) getFileStream(ctx context.Context, path string, sha string) (*FileStream, error) {
+	defer utils.PrintExecTime("file stream for %s", path)()
 	ret, _ := t.streams.GetOrCreate(sha, func() *FileStream {
 		return t.newFileStream(ctx, path, sha)
 	})
@@ -74,6 +77,7 @@ func (t *Transcoder) GetVideoIndex(
 	client string,
 	sha string,
 ) (string, error) {
+	defer utils.PrintExecTime("video index for %s", path)()
 	stream, err := t.getFileStream(ctx, path, sha)
 	if err != nil {
 		return "", err

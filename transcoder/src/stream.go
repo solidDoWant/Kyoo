@@ -20,10 +20,9 @@ import (
 type Flags int32
 
 const (
-	AudioF                Flags = 1 << 0
-	VideoF                Flags = 1 << 1
-	Transmux              Flags = 1 << 3
-	minParsedKeyframeTime       = 5.0 // seconds
+	AudioF   Flags = 1 << 0
+	VideoF   Flags = 1 << 1
+	Transmux Flags = 1 << 3
 )
 
 type StreamHandle interface {
@@ -80,15 +79,10 @@ func NewStream(file *FileStream, keyframes *Keyframe, handle StreamHandle, ret *
 		func() {
 			defer utils.PrintExecTime("Waiting for keyframe info to be ready for %s", file.Info.Path)()
 
-			if keyframes.info.parsedTimeNotifier != nil {
-				log.Printf("Using new keyframe notifier for %s", file.Info.Path)
+			if keyframes.info.indexKeyframesParsed != nil {
 				// Use a keyframe-time based notifier if supported
-				keyframes.info.mutex.Lock()
-				for keyframes.info.parsedTime < minParsedKeyframeTime {
-					log.Printf("parsed time is %f, min time is %f", keyframes.info.parsedTime, minParsedKeyframeTime)
-					keyframes.info.parsedTimeNotifier.Wait()
-				}
-				keyframes.info.mutex.Unlock()
+				log.Printf("Using new keyframe notifier for %s", file.Info.Path)
+				<-keyframes.info.indexKeyframesParsed
 			} else {
 				log.Printf("Using old keyframe notifier for %s", file.Info.Path)
 				keyframes.info.ready.Wait()

@@ -14,7 +14,10 @@ import (
 	"github.com/zoriya/kyoo/transcoder/src/utils"
 )
 
-const KeyframeVersion = 1
+const (
+	KeyframeVersion       = 1
+	minParsedKeyframeTime = 5.0 // seconds
+)
 
 type Keyframe struct {
 	Keyframes []float64
@@ -24,11 +27,11 @@ type Keyframe struct {
 type KeyframeInfo struct {
 	ready sync.WaitGroup
 	mutex sync.RWMutex
-	// parsedTime is the playback time of the last keyframe parsed
-	parsedTime float64
-	// parsedTimeNotifier broadcasts when the parsedTime is updated
-	parsedTimeNotifier *sync.Cond
-	listeners          []func(keyframes []float64)
+	// This channel is closed when enough keyfraames for index generation
+	// have been parsed. A nil value also indicates that the keyframes have
+	// been parsed.
+	indexKeyframesParsed chan struct{}
+	listeners            []func(keyframes []float64)
 }
 
 func (kf *Keyframe) Get(idx int32) float64 {
@@ -126,7 +129,7 @@ func (s *MetadataService) GetKeyframes(info *MediaInfo, isVideo bool, idx uint32
 	info.lock.Lock()
 	if isVideo {
 		info.Videos[idx].Keyframes = kf
-		kf.info.parsedTimeNotifier = sync.NewCond(&kf.info.mutex)
+		kf.info.indexKeyframesParsed = make(chan struct{})
 	} else {
 		info.Audios[idx].Keyframes = kf
 	}
@@ -244,12 +247,13 @@ func getVideoKeyframes(path string, video_idx uint32, kf *Keyframe) error {
 
 		ret = append(ret, fpts)
 
-		// Update the latest parsed playback time, and notify listeners.
-		kf.info.mutex.Lock()
-		log.Printf("Setting parsed time to %f", fpts)
-		kf.info.parsedTime = fpts
-		kf.info.parsedTimeNotifier.Broadcast()
-		kf.info.mutex.Unlock()
+		// Notify listeners that enough keyframes for index generation have been parsed
+		if fpts >= minParsedKeyframeTime {
+			kf.add(ret)
+			done += len(ret)
+			ret = ret[:0]
+			close(kf.info.indexKeyframesParsed)
+		}
 
 		if len(ret) == limit {
 			kf.add(ret)

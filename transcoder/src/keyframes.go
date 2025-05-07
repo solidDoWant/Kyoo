@@ -208,6 +208,8 @@ func getVideoKeyframes(path string, video_idx uint32, kf *Keyframe) error {
 	ret := make([]float64, 0, 1000)
 	limit := 100
 	done := 0
+	indexNotificationComplete := false
+
 	// sometimes, videos can start at a timing greater than 0:00. We need to take that into account
 	// and only list keyframes that come after the start of the video (without that, our segments count
 	// mismatch and we can have the same segment twice on the stream).
@@ -248,10 +250,11 @@ func getVideoKeyframes(path string, video_idx uint32, kf *Keyframe) error {
 		ret = append(ret, fpts)
 
 		// Notify listeners that enough keyframes for index generation have been parsed
-		if fpts >= minParsedKeyframeTime {
+		if !indexNotificationComplete && fpts >= minParsedKeyframeTime {
 			kf.add(ret)
 			done += len(ret)
 			ret = ret[:0]
+			indexNotificationComplete = true
 			close(kf.info.indexKeyframesParsed)
 		}
 

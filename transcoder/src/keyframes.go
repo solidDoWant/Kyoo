@@ -246,6 +246,7 @@ func getVideoKeyframes(path string, video_idx uint32, kf *Keyframe) error {
 
 		// Update the latest parsed playback time, and notify listeners.
 		kf.info.mutex.Lock()
+		log.Printf("Setting parsed time to %f", fpts)
 		kf.info.parsedTime = fpts
 		kf.info.parsedTimeNotifier.Broadcast()
 		kf.info.mutex.Unlock()

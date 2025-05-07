@@ -126,7 +126,7 @@ func (s *MetadataService) GetKeyframes(info *MediaInfo, isVideo bool, idx uint32
 	info.lock.Lock()
 	if isVideo {
 		info.Videos[idx].Keyframes = kf
-		kf.info.parsedTimeNotifier = sync.NewCond(&info.lock)
+		kf.info.parsedTimeNotifier = sync.NewCond(&kf.info.mutex)
 	} else {
 		info.Audios[idx].Keyframes = kf
 	}

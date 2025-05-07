@@ -172,7 +172,7 @@ func getVideoKeyframes(path string, video_idx uint32, kf *Keyframe) error {
 
 	args := []string{}
 	args = append(args, "-loglevel", "error")
-	args = append(args, Settings.HwAccel.GeneralFlags...)
+	// args = append(args, Settings.HwAccel.GeneralFlags...)
 	args = append(args, "-select_streams", fmt.Sprintf("V:%d", video_idx))
 	args = append(args, "-show_entries", "packet=pts_time,flags")
 	// some avi files don't have pts, we use this to ask ffmpeg to generate them (it uses the dts under the hood)
@@ -290,7 +290,7 @@ func getAudioKeyframes(info *MediaInfo, audio_idx uint32, kf *Keyframe) error {
 	// but since packets always contain only a few ms we don't need this precision.
 	args := []string{}
 	args = append(args, "-loglevel", "error")
-	args = append(args, Settings.HwAccel.GeneralFlags...)
+	// args = append(args, Settings.HwAccel.GeneralFlags...)
 	args = append(args, "-select_streams", fmt.Sprintf("a:%d", audio_idx))
 	args = append(args, "-show_entries", "packet=pts_time")
 	// some avi files don't have pts, we use this to ask ffmpeg to generate them (it uses the dts under the hood)

@@ -20,9 +20,10 @@ import (
 type Flags int32
 
 const (
-	AudioF   Flags = 1 << 0
-	VideoF   Flags = 1 << 1
-	Transmux Flags = 1 << 3
+	AudioF                Flags = 1 << 0
+	VideoF                Flags = 1 << 1
+	Transmux              Flags = 1 << 3
+	minParsedKeyframeTime       = 5.0 // seconds
 )
 
 type StreamHandle interface {
@@ -74,11 +75,19 @@ func NewStream(file *FileStream, keyframes *Keyframe, handle StreamHandle, ret *
 
 	ret.ready.Add(1)
 	go func() {
+		defer utils.PrintExecTime("Stream ready for %s", file.Info.Path)() // This is small - us range
+
 		func() {
 			defer utils.PrintExecTime("Waiting for keyframe info to be ready for %s", file.Info.Path)()
-			keyframes.info.ready.Wait()
+
+			if keyframes.info.parsedTimeNotifier != nil {
+				keyframes.info.mutex.Lock()
+				defer keyframes.info.mutex.Unlock()
+				for keyframes.info.parsedTime < minParsedKeyframeTime {
+					keyframes.info.parsedTimeNotifier.Wait()
+				}
+			}
 		}()
-		defer utils.PrintExecTime("Stream ready for %s", file.Info.Path)() // This is small - us range
 
 		length, is_done := keyframes.Length()
 		ret.segments = make([]Segment, length, max(length, 2000))

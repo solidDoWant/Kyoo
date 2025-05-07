@@ -22,9 +22,13 @@ type Keyframe struct {
 	info      *KeyframeInfo
 }
 type KeyframeInfo struct {
-	ready     sync.WaitGroup
-	mutex     sync.RWMutex
-	listeners []func(keyframes []float64)
+	ready sync.WaitGroup
+	mutex sync.RWMutex
+	// parsedTime is the playback time of the last keyframe parsed
+	parsedTime float64
+	// parsedTimeNotifier broadcasts when the parsedTime is updated
+	parsedTimeNotifier *sync.Cond
+	listeners          []func(keyframes []float64)
 }
 
 func (kf *Keyframe) Get(idx int32) float64 {
@@ -122,6 +126,7 @@ func (s *MetadataService) GetKeyframes(info *MediaInfo, isVideo bool, idx uint32
 	info.lock.Lock()
 	if isVideo {
 		info.Videos[idx].Keyframes = kf
+		kf.info.parsedTimeNotifier = sync.NewCond(&info.lock)
 	} else {
 		info.Audios[idx].Keyframes = kf
 	}
@@ -238,6 +243,12 @@ func getVideoKeyframes(path string, video_idx uint32, kf *Keyframe) error {
 		// handled as a segment prevents that.
 
 		ret = append(ret, fpts)
+
+		// Update the latest parsed playback time, and notify listeners.
+		kf.info.mutex.Lock()
+		kf.info.parsedTime = fpts
+		kf.info.parsedTimeNotifier.Broadcast()
+		kf.info.mutex.Unlock()
 
 		if len(ret) == limit {
 			kf.add(ret)

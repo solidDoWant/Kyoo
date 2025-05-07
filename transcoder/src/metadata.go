@@ -16,6 +16,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/lib/pq"
 	"github.com/zoriya/kyoo/transcoder/src/storage"
+	"github.com/zoriya/kyoo/transcoder/src/utils"
 )
 
 type MetadataService struct {
@@ -147,6 +148,8 @@ func (s *MetadataService) setupStorage(ctx context.Context) (storage.StorageBack
 }
 
 func (s *MetadataService) GetMetadata(ctx context.Context, path string, sha string) (*MediaInfo, error) {
+	defer utils.PrintExecTime("getting metadata for %s", path)()
+
 	ret, err := s.getMetadata(path, sha)
 	if err != nil {
 		return nil, err

@@ -181,6 +181,7 @@ func (fs *FileStream) GetMaster() string {
 
 func (fs *FileStream) getVideoStream(idx uint32, quality Quality) (*VideoStream, error) {
 	defer utils.PrintExecTime("video stream for %s (fs)", fs.Info.Path)()
+	// This is long running
 	stream, _ := fs.videos.GetOrCreate(VideoKey{idx, quality}, func() *VideoStream {
 		ret, _ := fs.transcoder.NewVideoStream(fs, idx, quality)
 		return ret

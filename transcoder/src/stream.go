@@ -75,6 +75,7 @@ func NewStream(file *FileStream, keyframes *Keyframe, handle StreamHandle, ret *
 	ret.ready.Add(1)
 	go func() {
 		keyframes.info.ready.Wait()
+		defer utils.PrintExecTime("Stream ready for %s", file.Info.Path)()
 
 		length, is_done := keyframes.Length()
 		ret.segments = make([]Segment, length, max(length, 2000))

@@ -90,6 +90,7 @@ type KeyframeKey struct {
 }
 
 func (s *MetadataService) GetKeyframes(info *MediaInfo, isVideo bool, idx uint32) (*Keyframe, error) {
+	defer utils.PrintExecTime("keyframe for %s %d", info.Path, idx)()
 	info.lock.Lock()
 	var ret *Keyframe
 	if isVideo && info.Videos[idx].Keyframes != nil {
@@ -182,6 +183,9 @@ func getVideoKeyframes(path string, video_idx uint32, kf *Keyframe) error {
 	if err != nil {
 		return err
 	}
+
+	// TODO command is never awaited, and error not checked
+	// TODO hardware acceleration is not used
 	err = cmd.Start()
 	if err != nil {
 		return err

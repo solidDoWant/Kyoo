@@ -63,6 +63,8 @@ RUN sed -i -e's/ main/ main contrib non-free/g' /etc/apt/sources.list.d/debian.s
 	$([ " $TARGETARCH" = " amd64" ] && echo "intel-media-va-driver-non-free i965-va-driver-shaders libmfx-gen1.2 libvpl2 libigfxcmrt7") \
 	# CA certificates for HTTPS to S3 buckets
 	ca-certificates \
+	# Debugging \
+	strace \
 	&& apt-get clean autoclean -y \
 	&& apt-get autoremove -y \
 	&& rm -rf /var/lib/apt/lists/*

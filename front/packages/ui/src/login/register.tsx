@@ -56,7 +56,7 @@ export const RegisterPage: QueryPage<{ apiUrl?: string }> = ({ apiUrl }) => {
 	return (
 		<FormPage apiUrl={apiUrl}>
 			<H1>{t("login.register")}</H1>
-			<OidcLogin apiUrl={apiUrl} />
+			<OidcLogin apiUrl={apiUrl} hideOr={!data?.passwordLoginEnabled} />
 			{data?.registrationEnabled && (
 				<Array>
 					<P {...css({ paddingLeft: ts(1) })}>{t("login.username")}</P>

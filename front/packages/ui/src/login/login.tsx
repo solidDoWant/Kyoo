@@ -57,7 +57,7 @@ export const LoginPage: QueryPage<{ apiUrl?: string; error?: string }> = ({
 	return (
 		<FormPage apiUrl={apiUrl}>
 			<H1>{t("login.login")}</H1>
-			<OidcLogin apiUrl={apiUrl} />
+			<OidcLogin apiUrl={apiUrl} hideOr={!data?.passwordLoginEnabled} />
 			{data?.passwordLoginEnabled && (
 				<Array>
 					<P {...css({ paddingLeft: ts(1) })}>{t("login.username")}</P>

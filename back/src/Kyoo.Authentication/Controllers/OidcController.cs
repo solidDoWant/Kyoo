@@ -122,10 +122,10 @@ public class OidcController(
 			{
 				user = await users.Create(newUser);
 			}
-			catch
+			catch (Exception e)
 			{
 				throw new ValidationException(
-					"A user already exists with the same username. If this is you, login via username and then link your account."
+					"A user already exists with the same username. If this is you, login via username and then link your account.", e
 				);
 			}
 		}
